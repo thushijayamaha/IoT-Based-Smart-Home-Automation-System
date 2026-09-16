@@ -1,0 +1,142 @@
+
+
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+
+LiquidCrystal_I2C lcd(0x27, 16, 2);  // I2C LCD address may be 0x3F or 0x27
+
+// ---------------- SENSOR PINS ----------------
+const int smokeAOPin = A0;     // MQ2 Analog
+const int smokeDOPin = 8;      // MQ2 Digital
+const int ldrSensor = A1;
+const int flameSensor = 2;
+const int rainSensor = 3;
+
+// ---------------- OUTPUT PINS ----------------
+const int buzzer = 4;      // Main project buzzer
+const int lightLED = 5;
+const int alertLED = 6;
+
+// ---------------- ULTRASONIC SENSOR PINS ----------------
+#define trig 7
+#define echo 9
+#define ultrasonicBuzzer 12   // separate ultrasonic buzzer (never use pin 4 again)
+
+// ----------------------------------------------------------
+
+void setup() {
+  // Inputs
+  pinMode(smokeAOPin, INPUT);
+  pinMode(smokeDOPin, INPUT);
+  pinMode(ldrSensor, INPUT);
+  pinMode(flameSensor, INPUT);
+  pinMode(rainSensor, INPUT);
+
+  // Outputs
+  pinMode(buzzer, OUTPUT);
+  pinMode(lightLED, OUTPUT);
+  pinMode(alertLED, OUTPUT);
+
+  // Ultrasonic setup
+  pinMode(trig, OUTPUT);
+  pinMode(echo, INPUT);
+  pinMode(ultrasonicBuzzer, OUTPUT);
+
+  lcd.init(); 
+  lcd.backlight();
+  
+  Serial.begin(9600);
+  lcd.setCursor(0, 0);
+  lcd.print(" Smart Home ");
+  lcd.setCursor(0, 1);
+  lcd.print(" Initializing ");
+  delay(2000);
+  lcd.clear();
+}
+
+// ------------------------------------------------------------------
+//             FUNCTION : ULTRASONIC SENSOR CHECK
+// ------------------------------------------------------------------
+void checkUltrasonic() {
+  long duration, distance;
+
+  digitalWrite(trig, LOW);
+  delayMicroseconds(2);
+
+  digitalWrite(trig, HIGH);
+  delayMicroseconds(5);
+
+  digitalWrite(trig, LOW);
+
+  duration = pulseIn(echo, HIGH);
+
+  distance = (duration / 2) * 0.0343;
+
+  Serial.print(" | Distance: ");
+  Serial.println(distance);
+
+  if (distance > 0 && distance < 10) {
+    tone(ultrasonicBuzzer, 1000);
+  } else {
+    noTone(ultrasonicBuzzer);
+  }
+}
+
+// ------------------------------------------------------------------
+//                           MAIN LOOP
+// ------------------------------------------------------------------
+
+void loop() {
+  int smokeValue = analogRead(smokeAOPin);       
+  bool gasDetected = digitalRead(smokeDOPin) == LOW;
+  int ldrValue = analogRead(ldrSensor);          
+  bool flameDetected = digitalRead(flameSensor) == LOW;
+  bool rainDetected = digitalRead(rainSensor) == LOW;
+
+  Serial.print("Smoke: "); Serial.print(smokeValue);
+  Serial.print(" | Gas DO: "); Serial.print(gasDetected);
+  Serial.print(" | LDR: "); Serial.print(ldrValue);
+  Serial.print(" | Flame: "); Serial.print(flameDetected);
+  Serial.print(" | Rain: "); Serial.print(rainDetected);
+
+  // Call ultrasonic function
+  checkUltrasonic();
+
+  // ---------------- LCD Display ----------------
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Smoke:");
+  lcd.print(smokeValue);
+
+  lcd.setCursor(9, 0);
+  lcd.print(ldrValue < 500 ? "Light" : "Dark");
+
+  lcd.setCursor(0, 1);
+  if (flameDetected) {
+    lcd.print("FLAME ALERT!");
+  } else if (gasDetected || smokeValue > 200) {
+    lcd.print("Gas/Smoke Detected");
+  } else if (rainDetected) {
+    lcd.print("Rain Warning");
+    } else {
+    lcd.print("All Normal");
+  }
+
+  // ---------------- Alerts (MAIN SYSTEM) ----------------
+  if (gasDetected || smokeValue >200  || flameDetected) {
+    digitalWrite(buzzer, HIGH);
+    digitalWrite(alertLED, HIGH);
+  } else {
+    digitalWrite(buzzer, LOW);
+    digitalWrite(alertLED, LOW);
+  }
+
+  // ---------------- LDR Light Control ----------------
+  if (ldrValue < 500) {
+    digitalWrite(lightLED, LOW); 
+  } else {
+    digitalWrite(lightLED, HIGH);
+  }
+
+  delay(1000);
+}
