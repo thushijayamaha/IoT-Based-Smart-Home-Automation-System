@@ -1,0 +1,54 @@
+/* New Blynk app with Home Automation
+   Home Page
+*/
+
+// 🔴 REQUIRED FOR NEW BLYNK (MUST BE ON TOP)
+#define BLYNK_TEMPLATE_ID "TMPL6fO28RiDR"
+#define BLYNK_TEMPLATE_NAME "control led"
+#define BLYNK_AUTH_TOKEN "GTxBh1ZKgZWd-towKby4uK1GJiYhpKGj"
+
+#define BLYNK_PRINT Serial
+
+// Include the library files
+#include <ESP8266WiFi.h>
+#include <BlynkSimpleEsp8266.h>
+
+// Define the relay pins
+#define light1 D1
+#define light2 D2
+#define wifiLed D0
+
+char ssid[] = "Thushii";        // WiFi name
+char pass[] = "thushi@2003";   // WiFi password
+
+// Button V0 → Light 1
+BLYNK_WRITE(V0) {
+  int value1 = param.asInt();
+  digitalWrite(light1, value1 ? LOW : HIGH);
+}
+
+// Button V1 → Light 2
+BLYNK_WRITE(V1) {
+  int value2 = param.asInt();
+  digitalWrite(light2, value2 ? LOW : HIGH);
+}
+
+void setup() {
+  Serial.begin(9600);
+
+  pinMode(light1, OUTPUT);
+  pinMode(light2, OUTPUT);
+  pinMode(wifiLed, OUTPUT);
+
+  // Turn relays OFF initially
+  digitalWrite(light1, HIGH);
+  digitalWrite(light2, HIGH);
+  digitalWrite(wifiLed, HIGH);
+
+  // Connect to Blynk Cloud
+  Blynk.begin(BLYNK_AUTH_TOKEN, ssid, pass);
+}
+
+void loop() {
+  Blynk.run();
+}
